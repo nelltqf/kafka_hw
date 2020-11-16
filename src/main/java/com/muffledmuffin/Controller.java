@@ -22,7 +22,7 @@ public class Controller {
     }
 
     @GetMapping
-    public String getStub() {
-        return "Stub";
+    public List<String> getMessages() {
+        return kafkaManager.getMessages();
     }
 }

@@ -1,13 +1,21 @@
 package com.muffledmuffin;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
@@ -24,6 +32,8 @@ public class KafkaManager {
 
     private final KafkaProducer<String, String> producer;
 
+    private final KafkaConsumer<String, String> consumer;
+
     public KafkaManager() {
         // TODO get from prop file
         globalProperties.put("bootstrap.servers", "localhost:9092");
@@ -31,6 +41,7 @@ public class KafkaManager {
         globalProperties.put("admin_client", "true");
 
         producer = buildProducer();
+        consumer = buildConsumer();
     }
 
     private KafkaProducer<String, String> buildProducer() {
@@ -46,6 +57,25 @@ public class KafkaManager {
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
         return new KafkaProducer<>(producerProperties);
+    }
+
+    private KafkaConsumer<String, String> buildConsumer() {
+        Properties consumerProperties = new Properties();
+        consumerProperties.putAll(globalProperties);
+        // TODO well...
+        consumerProperties.put(ConsumerConfig.CLIENT_ID_CONFIG, "some_consumer");
+        // TODO get from... somewhere
+        consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "some_group");
+        consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 100);
+        consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties);
+        consumer.subscribe(Collections.singleton(TOPIC_NAME));
+        return consumer;
     }
 
     public void sendMessages(List<String> messages) {
@@ -71,5 +101,22 @@ public class KafkaManager {
                 e.printStackTrace();
             }
         }
+    }
+
+    public List<String> getMessages() {
+        List<String> result = new ArrayList<>();
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(2));
+            if (records.isEmpty()) {
+                break;
+            }
+            for (ConsumerRecord<String, String> record: records) {
+                LOGGER.info("Received [{}] at partition {}, offset {}", record.value(), record.partition(),
+                        record.offset());
+                result.add(record.value());
+            }
+        }
+        LOGGER.info("Received {} messages", result.size());
+        return result;
     }
 }
