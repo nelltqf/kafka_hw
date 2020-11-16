@@ -8,6 +8,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
@@ -19,7 +20,9 @@ public class KafkaManager {
 
     private static final String APPLICATION_ID = "hello_world_v1";
 
-    private Properties globalProperties = new Properties();
+    private final Properties globalProperties = new Properties();
+
+    private final KafkaProducer<String, String> producer;
 
     public KafkaManager() {
         // TODO get from prop file
@@ -27,10 +30,10 @@ public class KafkaManager {
         globalProperties.put("topic", TOPIC_NAME);
         globalProperties.put("admin_client", "true");
 
-        runProducer();
+        producer = buildProducer();
     }
 
-    private void runProducer() {
+    private KafkaProducer<String, String> buildProducer() {
         Properties producerProperties = new Properties();
         producerProperties.putAll(globalProperties);
         producerProperties.put(ProducerConfig.CLIENT_ID_CONFIG, APPLICATION_ID);
@@ -42,9 +45,22 @@ public class KafkaManager {
         producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties);
+        return new KafkaProducer<>(producerProperties);
+    }
 
-        // TODO number of records
+    public void sendMessages(List<String> messages) {
+        for (String message: messages) {
+            try {
+                RecordMetadata recordMetadata = producer.send(new ProducerRecord<>(TOPIC_NAME, message)).get();
+                LOGGER.info("Delivered [{}] at partition {}, offset {}", message, recordMetadata.partition(),
+                        recordMetadata.offset());
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void sendMessages(int numberOfMessages) {
         for (int i = 0; i < 10; i++) {
             try {
                 String message = String.format("{\"userName\": \"user%d\"}", i);

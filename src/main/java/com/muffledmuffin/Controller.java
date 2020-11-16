@@ -1,7 +1,11 @@
 package com.muffledmuffin;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 public class Controller {
@@ -10,6 +14,11 @@ public class Controller {
 
     public Controller(KafkaManager kafkaManager) {
         this.kafkaManager = kafkaManager;
+    }
+
+    @PostMapping()
+    public void sendMessage(@RequestBody List<String> messages) {
+        kafkaManager.sendMessages(messages);
     }
 
     @GetMapping
