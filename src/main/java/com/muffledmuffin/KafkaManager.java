@@ -1,6 +1,7 @@
 package com.muffledmuffin;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class KafkaManager {
 
@@ -56,6 +56,21 @@ public class KafkaManager {
         return false;
     }
 
+    public ClusterInfo clusterInfo() {
+        try {
+            DescribeClusterResult clusterResult = adminClient.describeCluster();
+            // TODO futures in stream
+            return ClusterInfo.builder()
+                    .id(clusterResult.clusterId().get())
+                    .nodes(clusterResult.nodes().get().toString())
+                    .authorizedOperations(clusterResult.authorizedOperations().get())
+                    .build();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public void sendMessages(List<String> messages) {
         for (String message : messages) {
             try {
@@ -73,6 +88,7 @@ public class KafkaManager {
             try {
                 String message = String.format("{\"userName\": \"user%d\"}", i);
                 RecordMetadata recordMetadata = producer.send(new ProducerRecord<>(topicName, message)).get();
+                //TODO add logback conf to dump everything in a log file
                 LOGGER.info("Delivered [{}] at partition {}, offset {}", message, recordMetadata.partition(),
                         recordMetadata.offset());
             } catch (InterruptedException | ExecutionException e) {

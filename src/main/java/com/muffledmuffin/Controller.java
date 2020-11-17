@@ -30,4 +30,9 @@ public class Controller {
     public boolean checkTopic() {
         return kafkaManager.doesTopicExist();
     }
+
+    @GetMapping("/clusterInfo")
+    public ClusterInfo clusterInfo() {
+        return kafkaManager.clusterInfo();
+    }
 }
