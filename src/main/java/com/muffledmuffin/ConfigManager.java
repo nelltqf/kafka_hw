@@ -1,5 +1,6 @@
 package com.muffledmuffin;
 
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -89,7 +90,14 @@ public class ConfigManager {
     }
 
     @Bean
-    public KafkaManager kafkaManager(KafkaProducer<String, String> producer, KafkaConsumer<String, String> consumer) {
-        return new KafkaManager(producer, consumer, topicName);
+    public AdminClient adminClient(Properties globalProperties) {
+        return AdminClient.create(globalProperties);
+    }
+
+    @Bean
+    public KafkaManager kafkaManager(KafkaProducer<String, String> producer,
+                                     KafkaConsumer<String, String> consumer,
+                                     AdminClient adminClient) {
+        return new KafkaManager(producer, consumer, topicName, adminClient);
     }
 }

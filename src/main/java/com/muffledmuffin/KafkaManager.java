@@ -1,5 +1,7 @@
 package com.muffledmuffin;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -12,7 +14,10 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class KafkaManager {
 
@@ -21,14 +26,34 @@ public class KafkaManager {
     private final KafkaProducer<String, String> producer;
 
     private final KafkaConsumer<String, String> consumer;
+
     private final String topicName;
+
+    private final AdminClient adminClient;
 
     public KafkaManager(KafkaProducer<String, String> producer,
                         KafkaConsumer<String, String> consumer,
-                        String topicName) {
+                        String topicName,
+                        AdminClient adminClient) {
         this.producer = producer;
         this.consumer = consumer;
         this.topicName = topicName;
+        this.adminClient = adminClient;
+    }
+
+    public boolean doesTopicExist() {
+        ListTopicsResult topicsList = adminClient.listTopics();
+        try {
+            Set<String> resultNames = topicsList.names().get();
+            List<String> topicNames = resultNames
+                    .stream()
+                    .filter(name -> !name.startsWith("_"))
+                    .collect(Collectors.toList());
+            return topicNames.contains(topicName);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public void sendMessages(List<String> messages) {

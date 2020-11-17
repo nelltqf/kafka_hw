@@ -25,4 +25,9 @@ public class Controller {
     public List<String> getMessages() {
         return kafkaManager.getMessages();
     }
+
+    @GetMapping("/checkTopic")
+    public boolean checkTopic() {
+        return kafkaManager.doesTopicExist();
+    }
 }
